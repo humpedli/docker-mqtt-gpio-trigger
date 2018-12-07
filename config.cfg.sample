@@ -1,0 +1,18 @@
+# sample configuration 
+ 
+# MQTT broker related config
+[mqtt]
+host = 127.0.0.1
+port = 1883
+
+# topic for status messages
+statustopic = mqtt-gpio-trigger/status 
+
+[log]
+verbose = true
+logfile = /var/log/onewire-to-mqtt.log
+
+# list of gpio triggers (mqtt topics) and GPIO PIN numbers (BCM)
+[gpios]
+switch/lamp1 = 22
+switch/lamp2 = 23
