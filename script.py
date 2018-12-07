@@ -72,10 +72,10 @@ def on_message(self, obj, msg):
 	try:
 		logging.debug(("GPIO %s : %s") % (msg.topic, msg.payload))
 		if msg.payload=='ON':
-			GPIO.output(gpios[msg.topic],True)
+			GPIO.output(gpios[msg.topic],GPIO.LOW)
 			self.publish(("%s/status") % (msg.topic), "ON")
 		if msg.payload=='OFF':
-			GPIO.output(gpios[msg.topic],False)
+			GPIO.output(gpios[msg.topic],GPIO.HIGH)
 			self.publish(("%s/status") % (msg.topic), "OFF")
 
 	except ow.exUnknownGPIO:
@@ -184,7 +184,7 @@ def main_loop():
 
     for GPIO_TOPIC, GPIO_PORT in gpios.items():
         logging.debug(("  %s : %s") % (GPIO_TOPIC, GPIO_PORT))
-        GPIO.setup(GPIO_PORT, GPIO.OUT)
+        GPIO.setup(GPIO_PORT, GPIO.OUT, initial=GPIO.HIGH)
 
     # Connect to the broker and enter the main loop
     mqtt_connect()
@@ -196,7 +196,7 @@ def main_loop():
             try:
                 status = int(GPIO.input(GPIO_PORT))
                 logging.debug(("GPIO %s : %s") % (GPIO_PORT, status))
-                MQTTC.publish(("%s/status") % (GPIO_TOPIC), "ON" if status == 1 else "OFF")
+                MQTTC.publish(("%s/status") % (GPIO_TOPIC), "ON" if status == 0 else "OFF")
             except ow.Error:
                 logging.info("Threw an unknown GPIO exception for device %s - %s. Continuing", GPIO_TOPIC, GPIO_PORT)
                 continue
