@@ -5,7 +5,12 @@
 host = 127.0.0.1
 port = 1883
 
-# topic for status messages
+# polling interval for gpio status reports
+# status report topic depends on your [gpios] configuration
+# in current example topics are: switch/lamp1/status and switch/lamp2/status
+pollinterval = 30
+
+# topic for script status messages
 statustopic = mqtt-gpio-trigger/status 
 
 [log]

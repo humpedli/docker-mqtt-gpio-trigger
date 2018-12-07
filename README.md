@@ -15,6 +15,7 @@ Don't forget to create configuration file first (there is a sample in the reposi
 docker run --name=mqtt-gpio-trigger \
   --restart=always \
   --network=host \
+  --device=/dev/gpiomem \
   -v <path_to_config>/config.cfg:/usr/src/app/config.cfg \
   -v /etc/localtime:/etc/localtime:ro \
   -d humpedli/docker-mqtt-gpio-trigger
@@ -29,6 +30,8 @@ services:
   mqtt-gpio-trigger:
     container_name: "mqtt-gpio-trigger"
     image: "humpedli/docker-mqtt-gpio-trigger"
+    devices:
+      - "/dev/gpiomem:/dev/gpiomem"
     volumes:
       - "<path_to_config>/config.cfg:/usr/src/app/config.cfg"
       - "/etc/localtime:/etc/localtime:ro"
@@ -49,7 +52,12 @@ a self explaining sample configuration file is included
 host = 127.0.0.1
 port = 1883
 
-# topic for status messages
+# polling interval for gpio status reports
+# status report topic depends on your [gpios] configuration
+# in current example topics are: switch/lamp1/status and switch/lamp2/status
+pollinterval = 30
+
+# topic for script status messages
 statustopic = mqtt-gpio-trigger/status 
 
 [log]

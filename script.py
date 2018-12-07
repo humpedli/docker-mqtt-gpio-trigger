@@ -34,6 +34,7 @@ config.read(args.config_file)
 MQTT_HOST = config.get("mqtt", "host")
 MQTT_PORT = config.getint("mqtt", "port")
 STATUSTOPIC = config.get("mqtt", "statustopic")
+POLLINTERVAL = config.getint("mqtt", "pollinterval")
 
 # [log]
 LOGFILE = config.get("log", "logfile")
@@ -67,13 +68,15 @@ else:
 ### MQTT Callback handler ###
 
 # MQTT on message handler
-def on_message(mosq, obj, msg):
+def on_message(self, obj, msg):
 	try:
 		logging.debug(("GPIO %s : %s") % (msg.topic, msg.payload))
 		if msg.payload=='ON':
 			GPIO.output(gpios[msg.topic],True)
+			self.publish(("%s/status") % (msg.topic), "ON")
 		if msg.payload=='OFF':
 			GPIO.output(gpios[msg.topic],False)
+			self.publish(("%s/status") % (msg.topic), "OFF")
 
 	except ow.exUnknownGPIO:
 		logging.info("Threw an unknown GPIO exception for device %s. Continuing", msg.topic)
@@ -135,12 +138,12 @@ def on_mqtt_log(mosq, obj, level, string):
 ### END of MQTT Callback handler ###
 
 # clean disconnect on SIGTERM or SIGINT. 
-def cleanup(self, signum, frame):
+def cleanup(signum, frame):
     logging.info("Disconnecting from broker")
     # Publish a retained message to state that this client is offline
-    self.publish(STATUSTOPIC, "0 - DISCONNECT", retain=True)
-    self.disconnect()
-    self.loop_stop()
+    MQTTC.publish(STATUSTOPIC, "0 - DISCONNECT", retain=True)
+    MQTTC.disconnect()
+    MQTTC.loop_stop()
     GPIO.cleanup()
     logging.info("Exiting on signal %d", signum)
     sys.exit(signum)
@@ -167,7 +170,7 @@ def mqtt_connect():
     MQTTC.on_publish = on_mqtt_publish
     MQTTC.on_message = on_message
     MQTTC.on_log = on_mqtt_log
-    MQTTC.loop_forever()
+    MQTTC.loop_start()
 
 # Main Loop
 def main_loop():
@@ -176,6 +179,7 @@ def main_loop():
     logging.debug(("statustopic    : %s") % (str(STATUSTOPIC)))
     logging.debug(("GPIOs        : %s") % (len(gpios)))
 
+    GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
 
     for GPIO_TOPIC, GPIO_PORT in gpios.items():
@@ -184,6 +188,20 @@ def main_loop():
 
     # Connect to the broker and enter the main loop
     mqtt_connect()
+
+    while True:
+        # iterate over all GPIOs
+        for GPIO_TOPIC, GPIO_PORT in gpios.items():
+            logging.debug(("Querying %s : %s") % (GPIO_TOPIC, GPIO_PORT))
+            try:
+                status = int(GPIO.input(GPIO_PORT))
+                logging.debug(("GPIO %s : %s") % (GPIO_PORT, status))
+                MQTTC.publish(("%s/status") % (GPIO_TOPIC), "ON" if status == 1 else "OFF")
+            except ow.Error:
+                logging.info("Threw an unknown GPIO exception for device %s - %s. Continuing", GPIO_TOPIC, GPIO_PORT)
+                continue
+            
+            time.sleep(float(POLLINTERVAL) / len(gpios))
 
 # Use the signal module to handle signals
 signal.signal(signal.SIGTERM, cleanup)
